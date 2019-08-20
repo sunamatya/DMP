@@ -1,0 +1,28 @@
+%clc, close all, clear all
+load('Vj_segmented_data.mat')
+[l,b] = size(Rknee);
+% the first gait cycle is empty, hence remove that
+%Rknee(1,:)
+figure(1)
+plot (Rknee(:,4))%the first gives the 100% of the plot , the second gives which cycle
+csvwrite("knee.csv", Rknee(:,4));
+%plot (VarName2)
+
+figure (2)
+%plot (VarName3)
+plot (RAnkle(:,4))
+csvwrite("ankle.csv", RAnkle(:,4));
+
+
+%variable check for the system.. looks similar can use
+figure(3)
+%plot (VarName4)
+%figure(4)
+plot (RHip(:,4))
+csvwrite("hip.csv", RHip(:,4));
+
+
+%for j= 1:1:51
+ %   plot ()
+    
+
