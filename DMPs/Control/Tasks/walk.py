@@ -92,7 +92,8 @@ def Task():
     # number of goals is the number of (NANs - 1) * number of DMPs
     num_goals = (np.sum(trajectory[:,0] != trajectory[:,0]) - 1) * 3
     # respecify goals for spatial scaling by changing add_to_goals
-    n_bfs = [10, 30, 50, 100, 1000]
+    #n_bfs = [10, 30, 50, 100, 1000]
+    n_bfs = [100]
     for ii, bfs in enumerate(n_bfs):
         control_pars = {'add_to_goals':[1e-4]*num_goals,
                         'bfs':bfs, # how many basis function per DMP

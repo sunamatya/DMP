@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from pydmps import dmp as DMP
 from pydmps import dmp_discrete as DMP_discrete
 from pydmps import dmp_rhythmic as DMP_rhythmic
+
 import trajectory
 import pdb
 
@@ -30,7 +31,7 @@ class Shell(trajectory.Shell):
     """
     
     def __init__(self, bfs, add_to_goals=None, 
-                 pattern='rhythmic', **kwargs):
+                 pattern='rhythmic', external_force = None, **kwargs):
         """
         bfs int: the number of basis functions per DMP
         add_to_goals np.array: floats to add to the DMP goals
@@ -41,13 +42,16 @@ class Shell(trajectory.Shell):
         self.bfs = bfs
         self.add_to_goals = add_to_goals
         self.pattern = pattern 
+        self.external_force = external_force
+        print("dmp, control", external_force.shape)
+        print(kwargs.keys())
 
         super(Shell, self).__init__(**kwargs)
 
         if add_to_goals is not None: 
             for ii, dmp in enumerate(self.dmp_sets):
                 dmp.goal[0] += add_to_goals[ii*2]
-                dmp.goal[1] += add_to_goals[ii*2+1]
+                #dmp.goal[1] += add_to_goals[ii*2+1] # line commented because hard coded
                 #pdb.set_trace()
 
     def check_pen_up(self):
@@ -88,7 +92,7 @@ class Shell(trajectory.Shell):
             if self.pattern == 'discrete':
                 dmps = DMP_discrete.DMPs_discrete(dmps=num_DOF, bfs=self.bfs)
             elif self.pattern == 'rhythmic': 
-                dmps = DMP_rhythmic.DMPs_rhythmic(n_dmps=num_DOF, n_bfs=self.bfs)
+                dmps = DMP_rhythmic.DMPs_rhythmic(n_dmps=num_DOF, n_bfs=self.bfs, external_force = self.external_force)
             else: 
                 raise Exception('Invalid pattern type specified. Valid choices \
                                  are discrete or rhythmic.')
@@ -107,3 +111,5 @@ class Shell(trajectory.Shell):
         """Get the next target in the sequence.
         """
         self.controller.target,_,_ = self.dmps.step(tau=self.tau)#, state_fb=self.x)
+
+  

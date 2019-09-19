@@ -1,0 +1,15 @@
+function [H,P,R] = toEuler( qx,qy,qz,qw )
+H = atan2(2*qx*qy+2*qw*qz , qw^2 + qx^2 - qy^2 - qz^2);
+P = -asin(2*qx*qz - 2*qw*qy); 
+R = atan2(2*qx*qw+2*qy*qz , qw^2 - qx^2 -qy^2 + qz^2);
+% if (qx*qy + qz*qw == 0.5)
+%     H = 2 * atan2(qx,qw);
+%     Y = 0;
+% else
+%     if (qx*qy + qz*qw == -0.5)
+%         H = -2 * atan2(qx,qw);
+%         Y = 0;
+%     end
+% end
+end
+

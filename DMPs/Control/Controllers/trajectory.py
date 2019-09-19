@@ -24,7 +24,7 @@ class Shell(shell.Shell):
     """
     """
 
-    def __init__(self, gain, tau, trajectory, threshold=.01, **kwargs):
+    def __init__(self, gain, tau,trajectory, phi=0,threshold=.01, external_force = None, **kwargs):
         """
         control Control instance: the controller to use 
         trajectory np.array: the time series of points to follow
@@ -33,15 +33,15 @@ class Shell(shell.Shell):
         tau float: the time scaling term
         threshold float: how close the system must get to initial target
         """
-
-        super(Shell, self).__init__(**kwargs)
+        super(Shell, self).__init__( **kwargs)
 
         self.done = False
         self.gain = gain
         self.not_at_start = True
         self.num_seq = 0
         self.tau = tau
-        self.threshold = threshold 
+        self.threshold = threshold
+        self.phi = phi 
 
         self.gen_path(trajectory)
         self.set_target() 

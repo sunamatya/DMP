@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 
 from pydmps.cs import CanonicalSystem
-
+import pdb
 
 class DMPs(object):
     """Implementation of Dynamic Motor Primitives,
@@ -25,7 +25,7 @@ class DMPs(object):
 
     def __init__(self, n_dmps, n_bfs, dt=.01,
                  y0=0, goal=1, w=None,
-                 ay=None, by=None, **kwargs):
+                 ay=None, by=None, external_force=None, **kwargs):
         """
         n_dmps int: number of dynamic motor primitives
         n_bfs int: number of basis functions per DMP
@@ -36,7 +36,8 @@ class DMPs(object):
         ay int: gain on attractor term y dynamics
         by int: gain on attractor term y dynamics
         """
-
+        #print("dmp, pydmps", external_force.shape)
+        #print("dmp, pydmps", kwargs.keys())
         self.n_dmps = n_dmps
         self.n_bfs = n_bfs #1000
         self.dt = dt# 0.01
@@ -58,8 +59,21 @@ class DMPs(object):
         self.cs = CanonicalSystem(dt=self.dt, **kwargs)
         self.timesteps = int(self.cs.run_time / self.dt)
 
+
         # set up the DMP system
         self.reset_state()
+        self.data_path = None
+
+        self.external_force = external_force
+        self.w_p = np.zeros((self.timesteps, self.n_bfs))
+
+        # this is for ILC
+        self.FC_i = 0 # coupling learned force
+        self.e_i = 0
+
+        #this is for linear propagation
+        self.P = np.ones((self.timesteps, self.n_bfs))
+        self.error = np.zeros((self.timesteps, self.n_bfs))
 
     def check_offset(self):
         """Check to see if initial position and goal are the same
@@ -95,6 +109,8 @@ class DMPs(object):
         self.y0 = y_des[:, 0].copy()
         self.y_des = y_des.copy()
         self.goal = self.gen_goal(y_des)
+        #self.goal = np.array([25.92])
+        print (self.goal)
 
         self.check_offset()
 
@@ -120,76 +136,57 @@ class DMPs(object):
 
         f_target = np.zeros((y_des.shape[1], self.n_dmps))
         # find the force required to move along this trajectory
+        import scipy.interpolate
+        path = np.zeros((self.timesteps))
+        x = np.linspace(0, self.cs.run_time, self.external_force.shape[0]) #linear spacing start, end, number of steps
+
+        path_gen = scipy.interpolate.interp1d(x, self.external_force) # row by row path generation for each joint
+        for t in range(self.timesteps):
+            path[t] = path_gen(t * self.dt)
+
+        self.external_force = path
         for d in range(self.n_dmps):
             f_target[:, d] = (ddy_des[d] - self.ay[d] *
                               (self.by[d] * (self.goal[d] - y_des[d]) -
-                              dy_des[d]))
+                              dy_des[d])-self.external_force)
+            #need to add coupling term here
 
         # efficiently generate weights to realize f_target
         self.gen_weights(f_target)
+        self.data_path = y_des.copy()
 
 
 
+        plot = False
         if plot is True:
             # plot the basis function activations
             import matplotlib.pyplot as plt
             plt.figure(2)
-            plt.subplot(411)
+            #plt.subplot(411)
             psi_track = self.gen_psi(self.cs.rollout())
             plt.plot(psi_track)
             plt.title('basis functions')
+            #plt.show()
+           # pdb.set_trace()
 
-            # plot the desired forcing function vs approx
-            plt.subplot(412)
+            plt.figure(3)
+            #plt.subplot(412)
             plt.plot(f_target[:,0])
             plt.plot(np.sum(psi_track * self.w[0], axis=1) * self.dt)
             plt.legend(['f_target', 'w*psi'])
-            plt.title('DMP forcing function hip')
-            plt.tight_layout()
-            
-            plt.subplot(413)
-            plt.plot(f_target[:,1])
-            plt.plot(np.sum(psi_track * self.w[1], axis=1) * self.dt)
-            plt.legend(['f_target', 'w*psi'])
             plt.title('DMP forcing function knee')
             plt.tight_layout()
-            
-            plt.subplot(414)
-            plt.plot(f_target[:,2])
-            plt.plot(np.sum(psi_track * self.w[2], axis=1) * self.dt)
-            plt.legend(['f_target', 'w*psi'])
-            plt.title('DMP forcing function ankle')
-            plt.tight_layout()
 
-            # trying to see how the imitation work
+
             t_y, t_dy, t_ddy = self.rollout()
-            plt.figure(3)
-            plt.subplot(311)
+            plt.figure(4)
+            #plt.subplot(311)
             plt.plot(y_des[0])
             plt.plot(t_y[:,0], label = self.n_bfs)
             plt.legend(loc='lower right')
-            #plt.legend(['target', 'tracked'])
-            plt.title('hip plot')
-
-            # plot the desired forcing function vs approx
-            plt.subplot(312)
-            plt.plot(y_des[1])
-            plt.plot(t_y[:,1],label = self.n_bfs)
-            plt.legend(loc='lower right')
-            #plt.legend(['target', 'tracked'])
-            #plt.legend(['%i BFs' % i for i in self.n_bfs], loc='lower right')
-            plt.title('knee plot')
-            plt.tight_layout()
-            
-            plt.subplot(313)
-            plt.plot(y_des[2])
-            plt.plot(t_y[:,2],label = self.n_bfs)
-            plt.legend(loc='lower right')
-            #plt.legend(['%i BFs' % i for i in self.n_bfs], loc='lower right')
-            #plt.legend(['target', 'tracked'])
-            plt.title('ankle plot')
-            plt.tight_layout()
-            #print("the n_bfs is ", self.n_bfs)
+            plt.legend(['target', 'tracked'])
+            plt.show()
+            #plt.title('hip plot')
 
             #plt.show()
 
@@ -212,11 +209,53 @@ class DMPs(object):
         dy_track = np.zeros((timesteps, self.n_dmps))
         ddy_track = np.zeros((timesteps, self.n_dmps))
 
+        # import scipy.interpolate
+        # path = np.zeros((self.timesteps))
+        # x = np.linspace(0, self.cs.run_time, self.external_force.shape[0]) #linear spacing start, end, number of steps
+
+        # path_gen = scipy.interpolate.interp1d(x, self.external_force) # row by row path generation for each joint
+        # for t in range(self.timesteps):
+        #     path[t] = path_gen(t * self.dt)
+
+        # self.external_force = path
+
         for t in range(timesteps):
-
+            ext= self.external_force[t]
             # run and record timestep
-            y_track[t], dy_track[t], ddy_track[t] = self.step(**kwargs)
+            y_track[t], dy_track[t], ddy_track[t] = self.step(external_force= ext, c_a=1, c_v=1, **kwargs)
 
+
+            #pdb.set_trace()
+        # desired and tracked path
+        plot = False
+        if plot is True:
+            import matplotlib.pyplot as plt
+            plt.figure(4)
+            plt.subplot(411)
+            plt.plot(self.data_path[0])
+            plt.plot(y_track[:,0])
+            plt.legend(loc='lower right')
+            plt.legend(['target', 'tracked'])
+            plt.title('hip plot')
+
+            # plot the desired forcing function vs approx
+            plt.subplot(412)
+            plt.plot(self.data_path[1])
+            plt.plot(y_track[:,1])
+            plt.legend(loc='lower right')
+            plt.legend(['target', 'tracked'])
+            #plt.legend(['%i BFs' % i for i in self.n_bfs], loc='lower right')
+            plt.title('knee plot')
+            plt.tight_layout()
+
+            plt.subplot(413)
+            plt.plot(self.data_path[2])
+            plt.plot(y_track[:,2])
+            plt.legend(loc='lower right')
+            #plt.legend(['%i BFs' % i for i in self.n_bfs], loc='lower right')
+            plt.legend(['target', 'tracked'])
+            plt.title('ankle plot')
+            plt.tight_layout()
         return y_track, dy_track, ddy_track
 
     def reset_state(self):
@@ -226,7 +265,84 @@ class DMPs(object):
         self.ddy = np.zeros(self.n_dmps)
         self.cs.reset_state()
 
-    def step(self, tau=1.0, error=0.0, external_force=None):
+    #def step(self, tau=1.0, error=0.0, external_force=None):
+    def ILC(self, interaction_force):
+        Q = 0.99 # positive scalars
+        L = 1 # positive scalars
+        c = 0.5 # learning from present
+
+
+        #ILC from LPV
+        #temp_u=kp*self.th_e+ kd*(self.e[i+1]-self.e[i])
+        #FC-i = Coupled Learned Force, current iteraton learning control
+        e_i = -interaction_force
+        e_dot = e_i -self.e_i
+        self.e_i = e_i
+        self.FC_i = Q*(self.FC_i+ L*c*e_dot)
+        C_i = c*self.e_i+ self.FC_i
+        return C_i
+
+    def get_target(self, y_des, ext_force):
+        # calculate velocity of y_des
+        dy_des = np.diff(y_des) / self.dt
+        # add zero to the beginning of every row
+        dy_des = np.hstack((np.zeros((self.n_dmps, 1)), dy_des))
+
+        # calculate acceleration of y_des
+        ddy_des = np.diff(dy_des) / self.dt
+        # add zero to the beginning of every row
+        ddy_des = np.hstack((np.zeros((self.n_dmps, 1)), ddy_des))
+
+        f_target = np.zeros((y_des.shape[1], self.n_dmps))
+        # find the force required to move along this trajectory
+        
+        for d in range(self.n_dmps):
+            f_target[:, d] = (ddy_des[d] - self.ay[d] *
+                              (self.by[d] * (self.goal[d] - y_des[d]) -
+                              dy_des[d])-ext_force)
+
+        return f_target
+
+    def weight_update(self, f_target, r, P_init):
+        x_track = self.cs.rollout() # equation 2.5
+        psi = self.gen_psi(x_track) # equation 2.7
+        #print("kamina")
+        #print(self.w.shape)
+        weight = self.w_p
+        #print("size of the f_target", f_target.shape)
+        #print("size of the psi", psi.shape)
+        error = self.error
+        P = self.P
+
+        for i in range (self.n_bfs):
+            error[:,i] = f_target[:,0] - weight[:,i]*r
+            #P = np.linalg.inv(weight)
+            lamb = 0.97 #forgetting factor
+            upper= np.power(P[:,i], 2)*np.power(r,2)
+            lower = (lamb/psi[:,i])+(P[:,i]*np.power(r,2))+ 1e-8 
+            P[:,i] = 1/lamb*(P[:,i]-(upper/lower))
+            #print("self weight")
+            #print (self.w[0])
+            #print(self.w[0].shape)
+            # print(np.size(self.w[0],0))
+            # print(np.size(self.w[0],1))
+            #print("changed_weight")
+
+            self.w_p[:,i] = self.w_p[:,i]+ (psi[:,i]*P[:,i]*r*error[:,i]) #628*1 628*1 628*1 628*1
+        #print (w)
+        #print(w.shape)
+        #self.w_p[0] = np.array(w_p) 
+        self.error = error
+        self.P = P
+
+
+
+        # updating current weights
+        for i in range(self.n_bfs):
+            self.w[0, i] = np.sum(self.w_p[:,i])
+
+
+    def step(self, tau=1.0, error=0.0, external_force=None, c_v=0.0, c_a=0.0):
         """Run the DMP system for a single timestep.
 
         tau float: scales the timestep
@@ -248,12 +364,31 @@ class DMPs(object):
                  (np.dot(psi, self.w[d])) / np.sum(psi))#equation 2.6
 
             # DMP acceleration
+            #self.ddy[d] = (self.ay[d] *
+            #               (self.by[d] * (self.goal[d] - self.y[d]) -
+             #              self.dy[d]/tau) + f) * tau
+            ''' # old code
             self.ddy[d] = (self.ay[d] *
                            (self.by[d] * (self.goal[d] - self.y[d]) -
-                           self.dy[d]/tau) + f) * tau
+                           self.dy[d]) + f) /tau
             if external_force is not None:
                 self.ddy[d] += external_force[d]
             self.dy[d] += self.ddy[d] * tau * self.dt * error_coupling
             self.y[d] += self.dy[d] * self.dt * error_coupling
+            '''
+            self.ddy[d] = (self.ay[d] *
+                           (self.by[d] * (self.goal[d] - self.y[d]) -
+                           self.dy[d]) + f) /tau
+            if external_force is not None:
+                C_i = self.ILC(external_force)
+                #self.ddy[d] += c_a* external_force/ self.dt
+                self.ddy[d] += c_a* C_i/ self.dt
+            self.dy[d] += self.ddy[d] * tau * self.dt * error_coupling
+            if external_force is not None:
+                #self.dy[d] += c_v*external_force
+                self.dy[d] += C_i
+            self.y[d] += self.dy[d] * self.dt * error_coupling
+            #pdb.set_trace()
+
             #print('the value of force', f)
         return self.y, self.dy, self.ddy #figure 7

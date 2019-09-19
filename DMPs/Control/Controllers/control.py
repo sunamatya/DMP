@@ -16,6 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import numpy as np
+import pdb
 
 class Control(object):
     """
@@ -31,7 +32,7 @@ class Control(object):
 
         self.kp = kp
         self.kv = kv
-       
+        #pdb.set_trace()
         np.random.seed(1)
 
     def control(self): 

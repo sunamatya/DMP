@@ -16,8 +16,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 import sys
 import pdb # helps insert breakpoint pdb.set_trace()
-sys.path.append('/home/student/Documents/DMPs/Control/Arms/three_link')
-sys.path.append('/home/student/Documents/DMPs/Control/Controllers')
+sys.path.append('/home/labuser/Documents/DM/DMPs/Control/Arms/three_link')
+sys.path.append('/home/labuser/Documents/DM/DMPs/Control/Controllers')
 from Arms.three_link.arm import Arm3Link as Arm3
 
 import Controllers.dmp as dmp 

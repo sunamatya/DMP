@@ -26,8 +26,9 @@ class DMPs_rhythmic(DMPs):
     def __init__(self, **kwargs):
         """
         """
-
+        print("dmp_rhythmic", kwargs.keys())
         # call super class constructor
+        external_force = kwargs['external_force']
         super(DMPs_rhythmic, self).__init__(pattern='rhythmic', **kwargs)
         
 
@@ -103,6 +104,11 @@ class DMPs_rhythmic(DMPs):
             for b in range(self.n_bfs):
                 self.w[d, b] = (np.dot(psi_track[:, b], f_target[:, d]) /
                                 (np.sum(psi_track[:, b]) + 1e-10))
+
+        #this is included for improving weights
+        for t in range(self.timesteps):
+            for b in range(self.n_bfs):
+                self.w_p[t,b] = (psi_track[t,b]* f_target[t,0])/ (np.sum(psi_track[:,b]+1e-10))
 
 
 # ==============================
