@@ -43,7 +43,7 @@ class Shell(trajectory.Shell):
         self.add_to_goals = add_to_goals
         self.pattern = pattern 
         self.external_force = external_force
-        print("dmp, control", external_force.shape)
+        #print("dmp, control", external_force.shape)
         print(kwargs.keys())
 
         super(Shell, self).__init__(**kwargs)

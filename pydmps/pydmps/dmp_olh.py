@@ -65,7 +65,7 @@ class DMPs(object):
         self.data_path = None
 
         self.external_force = external_force
-        #self.w_p = np.zeros((self.timesteps, self.n_bfs))
+        self.w_p = np.zeros((self.timesteps, self.n_bfs))
 
         # this is for ILC
         self.FC_i = 0 # coupling learned force
@@ -73,12 +73,8 @@ class DMPs(object):
 
         #this is for linear propagation
         #self.P = np.ones((self.timesteps, self.n_bfs))
-        #self.P = np.ones((self.timesteps, self.n_bfs))
-        #self.P = np.identity(self.timesteps)
-        self.P = np.ones((self.n_bfs))
+        self.P = np.ones((self.timesteps, self.n_bfs))
         self.error = np.zeros((self.timesteps, self.n_bfs))
-        self.w_p = np.zeros((self.timesteps, self.n_bfs))
-
 
     def check_offset(self):
         """Check to see if initial position and goal are the same
@@ -161,7 +157,6 @@ class DMPs(object):
         # efficiently generate weights to realize f_target
         self.gen_weights(f_target)
         self.data_path = y_des.copy()
-        self.weight_update(f_target,1)
 
 
 
@@ -314,48 +309,36 @@ class DMPs(object):
                                   (self.by[d] * (self.goal[d] - y_des[d]) -
                                   dy_des[d]))
 
-        return f_target          
-
-    def batch_regression(self, f_target, r):
-        x_track = self.cs.rollout() # equation 2.5
-        psi = self.gen_psi(x_track)
-        for i in range(self.n_bfs):
-            self.w[0,i] = np.dot(psi[:,i],f_target[:,0])/np.sum(psi[:,i])
+        return f_target
 
     def weight_update(self, f_target, r):
-        #self.P = np.ones((self.n_bfs))
-        #self.error = np.zeros((self.timesteps, self.n_bfs))
-        #self.w_p = np.zeros((self.timesteps, self.n_bfs))
-
         x_track = self.cs.rollout() # equation 2.5
         psi = self.gen_psi(x_track) # equation 2.7
         #print("kamina")
         #print(self.w.shape)
-        #weight = self.w_p
+        weight = self.w_p
         #print("size of the f_target", f_target.shape)
         #print("size of the psi", psi.shape)
         error = self.error
         P = self.P
 
         for i in range (self.n_bfs):
-            for j in range(self.timesteps-1):
-                error[j,i] = f_target[j,0] - self.w_p[j,i]*r
-                #pdb.set_trace()
-                #print(error[:,i])
-                #P = np.linalg.inv(weight)
-                lamb = 0.97#forgetting factor
-                upper= np.power(P[i], 2)*np.power(r,2)
-                lower = (lamb/(psi[j,i]+1e-8))+(P[i]*np.power(r,2))+ 1e-8 
-                P[i] = 1/lamb*(P[i]-(upper/lower))
-                #print("self weight")
-                #print (self.w[0])
-                #print(self.w[0].shape)
-                # print(np.size(self.w[0],0))
-                # print(np.size(self.w[0],1))
-               
-                self.w_p[j+1,i] = self.w_p[j,i]+ (psi[j,i]*P[i]*r*error[j,i]) #628*1 628*1 628*1 628*1
-                #print("changed_weight")
-                #print(self.w_p[j+1,i])
+            error[:,i] = f_target[:,0] - weight[:,i]*r
+            #pdb.set_trace()
+            #print(error[:,i])
+            #P = np.linalg.inv(weight)
+            lamb = 0.97 #forgetting factor
+            upper= np.power(P[:,i], 2)*np.power(r,2)
+            lower = (lamb/psi[:,i])+(P[:,i]*np.power(r,2))+ 1e-8 
+            P[:,i] = 1/lamb*(P[:,i]-(upper/lower))
+            #print("self weight")
+            #print (self.w[0])
+            #print(self.w[0].shape)
+            # print(np.size(self.w[0],0))
+            # print(np.size(self.w[0],1))
+            #print("changed_weight")
+
+            self.w_p[:,i] = self.w_p[:,i]+ (psi[:,i]*P[:,i]*r*error[:,i]) #628*1 628*1 628*1 628*1
         #print (w)
         #print(w.shape)
         #self.w_p[0] = np.array(w_p) 
@@ -364,15 +347,12 @@ class DMPs(object):
 
 
 
-
-        # # updating current weights
-        # for i in range(self.n_bfs):
-        #     idx = np.argmax(np.abs(self.w_p[:,i]))
-        #     self.w[0, i] = self.w_p[idx,i]
-        #     #self.w[0, i] = np.sum(self.w_p[:,i])
+        # updating current weights
+        for i in range(self.n_bfs):
+            self.w[0, i] = np.sum(self.w_p[:,i])
 
 
-    def step(self, tau=1.0, error=0.0, external_force=None, c_v=0.0, c_a=0.0, t_s = 1):
+    def step(self, tau=1.0, error=0.0, external_force=None, c_v=0.0, c_a=0.0):
         """Run the DMP system for a single timestep.
 
         tau float: scales the timestep
@@ -390,10 +370,8 @@ class DMPs(object):
         for d in range(self.n_dmps):
 
             # generate the forcing term
-            # f = (self.gen_front_term(x, d) *
-            #      (np.dot(psi, self.w[d])) / np.sum(psi))#equation 2.6
-            f = (self.gen_front_term(x, d) * (np.dot(psi, self.w_p[t_s])) / np.sum(psi))#equation 2.6
-                        
+            f = (self.gen_front_term(x, d) *
+                 (np.dot(psi, self.w[d])) / np.sum(psi))#equation 2.6
 
             # DMP acceleration
             #self.ddy[d] = (self.ay[d] *

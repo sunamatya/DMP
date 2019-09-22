@@ -23,7 +23,7 @@ beta = alpha / 4 # by default
 def interaction_force():
 # this gives the interaction force for the system
 # exo torque or force
-	force_points = 100 #numero de point pour interaction
+	force_points = 25 #numero de point pour interaction
 	int_force = np.random.random((force_points, 1))*20 #limite des force max 20N # check if one or points
 	return int_force
 
@@ -39,6 +39,7 @@ random_force_data = interaction_force()
 
 
 control_shell1, runner_pars1 = knee(file_name1 = "./Tasks/Walk/working_data_2_3/myFile.csv", file_name2 = "./Tasks/Walk/working_data_2_3/minimum_points.csv")
+#control_shell1, runner_pars1 = knee(file_name1 = "./Tasks/Walk/force/myfile.csv", file_name2 = "./Tasks/Walk/force/indx.csv")
 
 #control_shell2, runner_pars2 = knee(file_name = ["walking_test2.csv"])
 #for each consecutive step

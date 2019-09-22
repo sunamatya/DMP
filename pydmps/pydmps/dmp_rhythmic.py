@@ -36,7 +36,8 @@ class DMPs_rhythmic(DMPs):
 
         # set variance of Gaussian basis functions
         # trial and error to find this spacing
-        self.h = np.ones(self.n_bfs) * self.n_bfs  # 1.75
+        self.h = np.ones(self.n_bfs) * self.n_bfs # 1.75
+        #self.h = np.ones(self.n_bfs)*1000
 
         self.check_offset() #for rhythmic motion
 

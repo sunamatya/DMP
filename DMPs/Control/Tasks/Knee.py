@@ -57,6 +57,8 @@ def knee(file_name1, file_name2):
             col_time.append(row[0])
             col_right.append(row[2])
             col_left.append(row[1])
+            #col_right.append(row[1])
+            #col_left.append(row[2])
             col_force.append(row[3])
 
             # generate function to interpolate the desired trajectory
@@ -85,22 +87,26 @@ def knee(file_name1, file_name2):
     second_gait_right = col_right[col_index[1]:col_index[2]]
     #first_gait_right  = np.ones((len(first_gait_right)))*35
     first_force = np.array(col_force[col_index[0]:col_index[1]])
+    first_force  = np.zeros((len(first_gait_right)))*35
     second_force = np.array(col_force[col_index[1]:col_index[2]])
 
     timesteps = len(first_gait_right) #+ len(second_gait_right)
+    #timesteps = 629
     # dt = .01
     # timesteps = int(1./dt) #data access at 100 Hz
 
     n_joints = 1 # only knee
     trajectory = np.zeros((timesteps+2, n_joints))*np.nan
+    #trajectory[1:-1, 0] = np.sin(np.arange(0, 2*np.pi, .01))
+
 
     # for t in range(timesteps):
     #     path[t] = path_gen(t * dt)
                         #print (path[t])
     # we're only interested in the y-dimensions of each trajectory
-    trajectory[1:-1, 0] = np.array(first_gait_right)
+    #trajectory[1:-1, 0] = np.array(first_gait_right)
     #combined_gait=
-    #trajectory[1:len(first_gait_right)+1, 0] = np.array(first_gait_right)
+    trajectory[1:len(first_gait_right)+1, 0] = np.array(first_gait_right)
     #trajectory[]
     #pdb.set_trace()
     # for pp, name in enumerate(names):
@@ -112,13 +118,19 @@ def knee(file_name1, file_name2):
     # plt.show()
 
 
+
     #pdb.set_trace()
 
     # number of goals is the number of (NANs - 1) * number of DMPs
     num_goals = (np.sum(trajectory[:,0] != trajectory[:,0]) - 1) * n_joints
+    '''
+    Testing for code
+    '''
+    #trajectory = 
+    #num_goals = 
     # respecify goals for spatial scaling by changing add_to_goals
     #n_bfs = [10, 30, 50, 100, 1000]
-    n_bfs = [10]
+    n_bfs = [25]
     for ii, bfs in enumerate(n_bfs):
         control_pars = {'add_to_goals':[1e-4]*num_goals,
                         'bfs':bfs, # how many basis function per DMP
@@ -150,7 +162,12 @@ def knee(file_name1, file_name2):
 
     # Iterate through each gait cycle
     for i in range(5):
+        #current_gait_right =  np.array(col_right[col_index[i]:col_index[i+1]])
         current_gait_right =  np.array(col_right[col_index[i]:col_index[i+1]])
+        first_gait_right  = np.array(col_right[col_index[0]:col_index[1]])
+
+        #current_gait_right = np.sin(np.arange(0, 2*np.pi, .01))
+
         current_force = np.array(col_force[col_index[i]:col_index[i+1]])
         # Somehow, trajectory isn't used in current formulation for 2nd + gait cycles. Maybe needs a fix.
         path = np.zeros((1, timesteps))
@@ -160,6 +177,15 @@ def knee(file_name1, file_name2):
             path[0, t] = path_gen(t * dt)
         y_des = path
 
+        #############for first gaits#####
+
+        path = np.zeros((1, timesteps))
+        x = np.linspace(0, control_shell.dmps.cs.run_time, first_gait_right.shape[0]) #linear spacing start, end, number of steps
+        path_gen = scipy.interpolate.interp1d(x, first_gait_right) # row by row path generation for each joint
+        for t in range(timesteps):
+            path[0, t] = path_gen(t * dt)
+        first = path
+
         path = np.zeros((timesteps))
         # pdb.set_trace()
         x = np.linspace(0, control_shell.dmps.cs.run_time, current_force.shape[0]) #linear spacing start, end, number of steps
@@ -168,13 +194,16 @@ def knee(file_name1, file_name2):
             path[t] = path_gen(t * dt)
         # print(np.sum(external_force-path))
         external_force = path
-        
+
         # if i == 0:
         #     f_target = control_shell.dmps.get_target(y_des, external_force)
         #     control_shell.dmps.weight_update(f_target,1,1)
         if i> 0:
-            f_target = control_shell.dmps.get_target(y_des, external_force)
-            control_shell.dmps.weight_update(f_target,1,0)
+            #f_target = control_shell.dmps.get_target(y_des = y_des, ext_force = None)
+            f_target = control_shell.dmps.get_target(y_des = first, ext_force = external_force)
+            control_shell.dmps.weight_update(f_target = f_target,r = 1)
+            #control_shell.dmps.batch_regression(f_target = f_target,r = 1)
+
         y_track = np.zeros((timesteps))
         dy_track = np.zeros((timesteps))
         ddy_track = np.zeros((timesteps))
@@ -182,7 +211,8 @@ def knee(file_name1, file_name2):
         for t in range(timesteps):
             ext= external_force[t]
             # run and record timestep
-            y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= ext, c_a=1, c_v=1)
+            y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= ext, c_a=1, c_v=1, t_s=t)
+            #y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= None, c_a=1, c_v=1, t_s = t)
 
         # Save first learned trajectory
         if i == 0:
@@ -193,12 +223,14 @@ def knee(file_name1, file_name2):
         plt.figure(i+2)
         #plt.subplot(311)
         plt.plot(y_des[0])
-        plt.plot(y_track, label = n_bfs[0])
+        plt.plot(y_track)
+        #plt.plot(y_track, label = n_bfs[0])
         plt.plot(first_track)
         plt.legend(loc='lower right')
         plt.legend(['target', 'tracked', 'first'])
         fig_name = '{}/gait_{}.png'.format(fig_path,i+1)
         plt.savefig(fig_name)
+
     plt.show()
 
     return (control_shell, runner_pars)
