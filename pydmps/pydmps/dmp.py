@@ -68,16 +68,21 @@ class DMPs(object):
         #self.w_p = np.zeros((self.timesteps, self.n_bfs))
 
         # this is for ILC
-        self.FC_i = 0 # coupling learned force
-        self.e_i = 0
+        #self.FC_i = 0 # coupling learned force
+        #self.e_i = 0
+        self.Memory_ILC_edot= np.zeros((1, self.timesteps))
+        self.Memory_ILC_e= np.zeros((1, self.timesteps))
+        self.Memory_ILC_FC= np.zeros((1, self.timesteps))
 
         #this is for linear propagation
         #self.P = np.ones((self.timesteps, self.n_bfs))
         #self.P = np.ones((self.timesteps, self.n_bfs))
         #self.P = np.identity(self.timesteps)
-        self.P = np.ones((self.n_bfs))
+        #self.P = np.zeros((self.n_bfs))
         self.error = np.zeros((self.timesteps, self.n_bfs))
         self.w_p = np.zeros((self.timesteps, self.n_bfs))
+        self.P = np.ones((self.n_bfs))
+
 
 
     def check_offset(self):
@@ -274,9 +279,9 @@ class DMPs(object):
         self.cs.reset_state()
 
     #def step(self, tau=1.0, error=0.0, external_force=None):
-    def ILC(self, interaction_force):
+    def ILC(self, interaction_force, timesteps):
         Q = 0.99 # positive scalars
-        L = 1 # positive scalars
+        L = 0.1 # positive scalars
         c = 0.5 # learning from present
 
 
@@ -284,10 +289,30 @@ class DMPs(object):
         #temp_u=kp*self.th_e+ kd*(self.e[i+1]-self.e[i])
         #FC-i = Coupled Learned Force, current iteraton learning control
         e_i = -interaction_force
-        e_dot = e_i -self.e_i
+        
+        #e_dot = (e_i -self.e_i)/self.dt
+        #e_dot = np.diff(self.e_i)/self.dt
+        #edot_i = np.diff(e_i)/self.dt
+        #print(self.Memory_ILC_e)
+        #print(self.Memory_ILC_e.shape())
+        #print(timesteps)
+        #print(interaction_force)
+        #print(self.Memory_ILC_e[0,timesteps])
+
+        edot_i = (e_i-self.Memory_ILC_e[0][timesteps])/self.dt
+
+                #self.e_i = 0
         self.e_i = e_i
-        self.FC_i = Q*(self.FC_i+ L*c*e_dot)
-        C_i = c*self.e_i+ self.FC_i
+        FC_i = Q*(self.Memory_ILC_FC[0][timesteps]+ L*c*self.Memory_ILC_edot[0][timesteps])
+        C_i = c*e_i+ FC_i
+
+        #print(edot_i)
+        #print(FC_i)
+        #print(C_i)
+
+        self.Memory_ILC_edot[0,timesteps]= edot_i
+        self.Memory_ILC_e[0,timesteps]= e_i
+        self.Memory_ILC_FC[0,timesteps]= FC_i
         return C_i
 
     def get_target(self, y_des, ext_force):
@@ -322,6 +347,10 @@ class DMPs(object):
         for i in range(self.n_bfs):
             self.w[0,i] = np.dot(psi[:,i],f_target[:,0])/np.sum(psi[:,i])
 
+        # for t in range(self.timesteps):
+        #     for b in range(self.n_bfs):
+                # self.w_p[t,b] = (psi[t,b]*f_target[t,0])/(np.sum(psi[:,b])+1e-10)
+
     def weight_update(self, f_target, r):
         #self.P = np.ones((self.n_bfs))
         #self.error = np.zeros((self.timesteps, self.n_bfs))
@@ -351,7 +380,7 @@ class DMPs(object):
                 #print (self.w[0])
                 #print(self.w[0].shape)
                 # print(np.size(self.w[0],0))
-                # print(np.size(self.w[0],1))
+                #print(P[i])
                
                 self.w_p[j+1,i] = self.w_p[j,i]+ (psi[j,i]*P[i]*r*error[j,i]) #628*1 628*1 628*1 628*1
                 #print("changed_weight")
@@ -372,7 +401,7 @@ class DMPs(object):
         #     #self.w[0, i] = np.sum(self.w_p[:,i])
 
 
-    def step(self, tau=1.0, error=0.0, external_force=None, c_v=0.0, c_a=0.0, t_s = 1):
+    def step(self, tau=1.0, error=0.0, external_force=None, c_v=0.0, c_a=0.0, t_s = 1, firstgait = False):
         """Run the DMP system for a single timestep.
 
         tau float: scales the timestep
@@ -390,9 +419,11 @@ class DMPs(object):
         for d in range(self.n_dmps):
 
             # generate the forcing term
-            # f = (self.gen_front_term(x, d) *
-            #      (np.dot(psi, self.w[d])) / np.sum(psi))#equation 2.6
-            f = (self.gen_front_term(x, d) * (np.dot(psi, self.w_p[t_s])) / np.sum(psi))#equation 2.6
+            if firstgait:
+                f = (self.gen_front_term(x, d) *
+                    (np.dot(psi, self.w[d])) / np.sum(psi))#equation 2.6
+            else:
+                f = (self.gen_front_term(x, d) * (np.dot(psi, self.w_p[t_s])) / np.sum(psi))#equation 2.6
                         
 
             # DMP acceleration
@@ -412,8 +443,9 @@ class DMPs(object):
                            (self.by[d] * (self.goal[d] - self.y[d]) -
                            self.dy[d]) + f) /tau
             if external_force is not None:
-                C_i = self.ILC(external_force)
-                #self.ddy[d] += c_a* external_force/ self.dt
+                C_i = self.ILC(external_force, t_s)
+                self.ddy[d] += c_a* external_force/ self.dt
+                #print(C_i)
                 self.ddy[d] += c_a* C_i/ self.dt
             self.dy[d] += self.ddy[d] * tau * self.dt * error_coupling
             if external_force is not None:

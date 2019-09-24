@@ -36,6 +36,11 @@ def interaction_force():
 # in case of exo.. torque.. impedance control.. learning
 dt = 1e-3
 random_force_data = interaction_force()
+file_name1 = 'all_data/myfile4.csv'
+file_name2 = 'all_data/indxR4.csv'
+
+
+#control_shell1, runner_pars1 = knee(file_name1 = "./Tasks/all_data/myfile4.csv", file_name2 = "./Tasks/all_data/indxR4.csv")
 
 
 control_shell1, runner_pars1 = knee(file_name1 = "./Tasks/Walk/working_data_2_3/myFile.csv", file_name2 = "./Tasks/Walk/working_data_2_3/minimum_points.csv")
