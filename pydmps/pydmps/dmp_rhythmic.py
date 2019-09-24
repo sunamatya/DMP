@@ -26,7 +26,7 @@ class DMPs_rhythmic(DMPs):
     def __init__(self, **kwargs):
         """
         """
-        print("dmp_rhythmic", kwargs.keys())
+        #print("dmp_rhythmic", kwargs.keys())
         # call super class constructor
         external_force = kwargs['external_force']
         super(DMPs_rhythmic, self).__init__(pattern='rhythmic', **kwargs)

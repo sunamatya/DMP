@@ -74,6 +74,11 @@ class DMPs(object):
         self.Memory_ILC_e= np.zeros((1, self.timesteps))
         self.Memory_ILC_FC= np.zeros((1, self.timesteps))
 
+        #####this is for ILC learning
+        self.Q_ilc= 0.99 # positive scalars
+        self.L_ilc = 0.1 # positive scalars
+        self.c_ilc = 0.5 # learning from present
+
         #this is for linear propagation
         #self.P = np.ones((self.timesteps, self.n_bfs))
         #self.P = np.ones((self.timesteps, self.n_bfs))
@@ -120,7 +125,7 @@ class DMPs(object):
         self.y_des = y_des.copy()
         self.goal = self.gen_goal(y_des)
         #self.goal = np.array([25.92])
-        print (self.goal)
+        #print (self.goal)
 
         self.check_offset()
 
@@ -279,10 +284,19 @@ class DMPs(object):
         self.cs.reset_state()
 
     #def step(self, tau=1.0, error=0.0, external_force=None):
+
+    def setILC(self, Q, L, c):
+        self.Q_ilc= Q
+        self.L_ilc = L
+        self.c_ilc = c
+
     def ILC(self, interaction_force, timesteps):
-        Q = 0.99 # positive scalars
-        L = 0.1 # positive scalars
-        c = 0.5 # learning from present
+        Q = self.Q_ilc
+        L = self.L_ilc
+        c = self.c_ilc
+        #Q = 0.99 # positive scalars
+        #L = 0.1 # positive scalars
+        #c = 0.5 # learning from present
 
 
         #ILC from LPV

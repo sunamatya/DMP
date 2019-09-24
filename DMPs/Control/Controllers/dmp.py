@@ -44,9 +44,10 @@ class Shell(trajectory.Shell):
         self.pattern = pattern 
         self.external_force = external_force
         #print("dmp, control", external_force.shape)
-        print(kwargs.keys())
+        #print(kwargs.keys())
 
         super(Shell, self).__init__(**kwargs)
+
 
         if add_to_goals is not None: 
             for ii, dmp in enumerate(self.dmp_sets):

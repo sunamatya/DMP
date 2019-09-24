@@ -27,7 +27,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.interpolate
 
-def knee(file_name1, file_name2):
+def knee(file_name1, file_name2, Q, L, c):
     """
     This task sets up the arm to move like a leg walking.
 
@@ -115,17 +115,19 @@ def knee(file_name1, file_name2):
     #trajectory[]
     #pdb.set_trace()
     # for pp, name in enumerate(names):
-    plt.figure(1)
-    plt.subplot(121)
-    plt.plot(trajectory[1:-1])
-    #plt.plot(np.array(col_left))
-    plt.title('first_gait_right')
-    plt.subplot(122)
-    plt.plot(trajectory2[1:-1])
-    #plt.plot(np.array(col_left))
-    plt.title('first_gait_left')
-    plt.tight_layout()
-    # plt.show()
+    plot = False
+    if plot == True:
+        plt.figure(1)
+        plt.subplot(121)
+        plt.plot(trajectory[1:-1])
+        #plt.plot(np.array(col_left))
+        plt.title('first_gait_right')
+        plt.subplot(122)
+        plt.plot(trajectory2[1:-1])
+        #plt.plot(np.array(col_left))
+        plt.title('first_gait_left')
+        plt.tight_layout()
+        # plt.show()
 
 
 
@@ -181,9 +183,15 @@ def knee(file_name1, file_name2):
         controller2 = GC.Control(kp=kp, kv=np.sqrt(kp)) # just sets kp and kv values nothing else
         control_shell2 = DMP.Shell(controller=controller2, **control_pars)
 
+    ############### Setting ILC values ############################
+    control_shell.dmps.setILC(Q,L,c)
+    control_shell2.dmps.setILC(Q,L,c)
+
+
+
 
     # A edit
-    print("Access after initiate")
+    # print("Access after initiate")
     fig_path = './figure'
     if not os.path.exists(fig_path):
         os.makedirs(fig_path)
@@ -191,8 +199,16 @@ def knee(file_name1, file_name2):
     dt = 0.01
     external_force = np.zeros((timesteps))
 
+    #Arrays to save output
+    #empty holder
+    y_target_left = np.zeros((0))
+    y_target_right = np.zeros((0))
+    y_tracked_left = np.zeros((0))
+    y_tracked_right = np.zeros((0))
+
     # Iterate through each gait cycle
-    for i in range(5):
+    
+    for i in range(len(col_index)-1):
         current_gait_left =  np.array(col_left[col_index[i]:col_index[i+1]])
         current_gait_right =  np.array(col_right[col_index[i]:col_index[i+1]])
         first_gait_right  = np.array(col_right[col_index[0]:col_index[1]])
@@ -361,34 +377,45 @@ def knee(file_name1, file_name2):
             first_track2 = np.copy(y_track2)
 
         control_shell.dmps.cs.reset_state()
+        control_shell2.dmps.cs.reset_state()
 
-        plt.figure(i+2)
-        #plt.subplot(311)
-        plt.subplot(121)
-        plt.plot(y_des[0])
-        plt.plot(y_track)
-        #plt.plot(y_track, label = n_bfs[0])
-        plt.plot(first_track)
-        if i>0:
-            plt.plot(y_des_last[0])
-        plt.legend(loc='lower right')
-        plt.legend(['target', 'tracked', 'first', 'last'])
-        plt.subplot(122)
-        plt.plot(y_des2[0])
-        plt.plot(y_track2)
-        #plt.plot(y_track, label = n_bfs[0])
-        plt.plot(first_track2)
-        if i>0:
-            plt.plot(y_des_last2[0])
+        ###saving data for RMSE########
+        y_target_left = np.concatenate((y_target_left, y_des2[0]))
+        y_target_right = np.concatenate((y_target_right, y_des[0]))
+        y_tracked_left = np.concatenate((y_tracked_left, y_track2))
+        y_tracked_right = np.concatenate((y_tracked_right, y_track))
 
-        plt.legend(loc='lower right')
-        plt.legend(['target', 'tracked', 'first', 'last'])
 
-        fig_name = '{}/gait_{}.png'.format(fig_path,i+1)
-        plt.title(i)
+        if (plot == True):
 
-        plt.savefig(fig_name)
+            plt.figure(i+2)
+            #plt.subplot(311)
+            plt.subplot(121)
+            plt.plot(y_des[0])
+            plt.plot(y_track)
+            #plt.plot(y_track, label = n_bfs[0])
+            plt.plot(first_track)
+            if i>0:
+                plt.plot(y_des_last[0])
+            plt.legend(loc='lower right')
+            plt.legend(['target', 'tracked', 'first', 'last'])
+            plt.subplot(122)
+            plt.plot(y_des2[0])
+            plt.plot(y_track2)
+            #plt.plot(y_track, label = n_bfs[0])
+            plt.plot(first_track2)
+            if i>0:
+                plt.plot(y_des_last2[0])
 
-    plt.show()
+            plt.legend(loc='lower right')
+            plt.legend(['target', 'tracked', 'first', 'last'])
 
-    return (control_shell, runner_pars)
+            fig_name = '{}/gait_{}.png'.format(fig_path,i+1)
+            plt.title(i)
+
+            plt.savefig(fig_name)
+
+    if (plot== True):
+        plt.show()
+
+    return (y_target_left, y_target_right, y_tracked_left,y_tracked_right)
