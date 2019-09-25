@@ -206,8 +206,22 @@ def knee(file_name1, file_name2, Q, L, c):
     y_tracked_left = np.zeros((0))
     y_tracked_right = np.zeros((0))
 
-    # Iterate through each gait cycle
-    
+    #interpolate time 
+    path = np.zeros((timesteps*(len(col_index)-1)))
+    clip_time = np.array(col_time[col_index[0]: col_index[-1]])
+    starttime = clip_time[0]
+    clip_time = clip_time -starttime
+    #print(starttime)
+    #print(clip_time[-1])
+    x = np.linspace(0, clip_time[-1], clip_time.shape[0]) #linear spacing start, end, number of steps
+    path_gen = scipy.interpolate.interp1d(x, clip_time) # row by row path generation for each joint
+    dlt = (clip_time[-1])/path.shape[0]
+    for t in range(path.shape[0]):
+        path[t] = path_gen(t * dlt)
+    time_interpolated = path
+    #pdb.set_trace()
+
+    # Iterate through each gait cycle   
     for i in range(len(col_index)-1):
         current_gait_left =  np.array(col_left[col_index[i]:col_index[i+1]])
         current_gait_right =  np.array(col_right[col_index[i]:col_index[i+1]])
@@ -332,7 +346,7 @@ def knee(file_name1, file_name2, Q, L, c):
             #f_target = control_shell.dmps.get_target(y_des = first, ext_force = external_force)
             control_shell.dmps.weight_update(f_target = f_target,r = 1)
 
-            f_target2 = control_shell2.dmps.get_target(y_des = y_des_last2, ext_force = external_force)
+            f_target2 = control_shell2.dmps.get_target(y_des = y_des_last2, ext_force = -external_force)
             #f_target = control_shell.dmps.get_target(y_des = first, ext_force = external_force)
             control_shell2.dmps.weight_update(f_target = f_target2,r = 1)
 
@@ -362,7 +376,7 @@ def knee(file_name1, file_name2, Q, L, c):
                 # run and record timestep
                 y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= ext, c_a=1, c_v=1, t_s=t)
                 #y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= None, c_a=1, c_v=1, t_s = t)
-                y_track2[t], dy_track2[t], ddy_track2[t] = control_shell2.dmps.step(external_force= ext, c_a=1, c_v=1, t_s=t)
+                y_track2[t], dy_track2[t], ddy_track2[t] = control_shell2.dmps.step(external_force= -ext, c_a=1, c_v=1, t_s=t)
 
         # else:
         #     for t in range(timesteps):
@@ -418,4 +432,4 @@ def knee(file_name1, file_name2, Q, L, c):
     if (plot== True):
         plt.show()
 
-    return (y_target_left, y_target_right, y_tracked_left,y_tracked_right)
+    return y_target_left, y_target_right, y_tracked_left,y_tracked_right, time_interpolated

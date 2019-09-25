@@ -15,7 +15,7 @@ import numpy as np
 import pdb
 
 import pydmps.dmp_rhythmic
-alpha = 75. #by default
+alpha = 8 #by default
 beta = alpha / 4 # by default
 #beta = 20.0 / np.pi
 #gamma = 100
@@ -58,8 +58,15 @@ min_rmse = 1000
 
 for i in range (c_range.shape[0]):
 	for j in range (Q_range.shape[0]):
-		file_name1 = "./Tasks/Walk/working_data_2_3/myFile.csv"
-		file_name2 = "./Tasks/Walk/working_data_2_3/minimum_points.csv"
+		#file_name1 = "./Tasks/Walk/working_data_2_3/myFile.csv"
+		#file_name2 = "./Tasks/Walk/working_data_2_3/minimum_points.csv"
+		#file_name1 = "./Tasks/all_data/myfile4.csv"
+		#file_name2 = "./Tasks/all_data/indxR4.csv"
+		# file_name1 = "./Tasks/fwddata/myfile_TS1.csv"
+		# file_name2 = "./Tasks/fwddata/indx_TS1_L.csv"
+		
+		file_name1 = "./Tasks/fwddata/myfile_TS2.csv"
+		file_name2 = "./Tasks/fwddata/indx_TS2_L.csv"
 		c = c_range[i]
 		Q = Q_range[j]
 		y_target_left_1, y_target_right_1, y_tracked_left_1,y_tracked_right_1 = knee(file_name1, file_name2, Q, L, c)
@@ -86,7 +93,7 @@ for i in range (c_range.shape[0]):
 		print("C: {:.3f}, Q: {:.3f}, RMSE L :{}".format(c, Q, root_mean_l))
 		print("C: {:.3f}, Q: {:.3f}, RMSE R :{}".format(c, Q, root_mean_r))
 
-print("minC: {:.3f}, minQ: {:.3f}, minRMSE :{}".format(minC, minQ, min_rmse))
+print("minC: {:.3f}, minQ: {:.3f}, minRMSE :{}".format(minC, Q, min_rmse))
 
 
 # file_name1 = "./Tasks/Walk/working_data_2_3/myFile.csv"
