@@ -27,13 +27,15 @@ beta = alpha / 4 # by default
 
 Q = 0.9
 L = 0.1
-c = 0.1
+c = 0.5
 
 #file_name1 = "./Tasks/Walk/working_data_2_3/myFile.csv"
 #file_name2 = "./Tasks/Walk/working_data_2_3/minimum_points.csv"
 
-file_name1 = "./Tasks/fwddata/myfile_TS1.csv"
-file_name2 = "./Tasks/fwddata/indx_TS1_L.csv"
+file_name1 = "./Tasks/fwddata/myfile_TS5.csv"
+file_name2 = "./Tasks/fwddata/indx_TS5_L.csv"
+#file_name1 = "./Tasks/all_data/myfile7.csv"
+#file_name2 = "./Tasks/all_data/indx7L.csv"
 
 y_target_left, y_target_right, y_tracked_left,y_tracked_right, interpolated_time = knee(file_name1, file_name2, Q, L, c)
 
@@ -48,32 +50,54 @@ root_mean_r = np.sqrt(rm_mean_r)
 root_avg = (root_mean_l+ root_mean_r)/2
 
 
-#print("C: {:.3f}, Q: {:.3f}, RMSE L :{}".format(c, Q, root_mean_l))
-#print("C: {:.3f}, Q: {:.3f}, RMSE R :{}".format(c, Q, root_mean_r))\
+print("C: {:.3f}, Q: {:.3f}, RMSE L :{}".format(c, Q, root_mean_l))
+print("C: {:.3f}, Q: {:.3f}, RMSE R :{}".format(c, Q, root_mean_r))
 
-
+# interpolated_time = np.arange(y_target_left.shape[0])/1000
 
 #######plot for results############
 
-import matplotlib.pyplot as plt
-plt.figure(1)
-plt.subplot(121)
-plt.plot(interpolated_time, y_target_left)
-plt.plot(interpolated_time, y_tracked_left, '--')
-plt.xlabel('t (s)')
-plt.ylabel('Knee Joint Angle (deg)')
-plt.legend(loc='upper right')
-plt.legend(['target', 'tracked'])
-plt.title('Left Leg Gait')
-plt.subplot(122)
-plt.plot(interpolated_time, y_target_right)
-plt.plot(interpolated_time, y_tracked_right, '--')
-plt.title('Right Leg Gait')
-plt.xlabel('t (s)')
-plt.ylabel('Knee Joint Angle (deg)')
-plt.legend(loc='upper right')
-plt.legend(['target', 'tracked'])
-plt.tight_layout()
-plt.savefig("dataTS1_dmp.png")
-plt.show()
+# import matplotlib.pyplot as plt
+# plt.figure(1)
+# plt.subplot(121)
+# plt.plot(interpolated_time, y_target_left)
+# plt.plot(interpolated_time, y_tracked_left, '--')
+# plt.xlabel('t (s)')
+# plt.ylabel('Knee Joint Angle (deg)')
+# plt.legend(loc='upper right')
+# plt.legend(['target', 'tracked'])
+# plt.title('Left Leg Gait')
+# plt.subplot(122)
+# plt.plot(interpolated_time, y_target_right)
+# plt.plot(interpolated_time, y_tracked_right, '--')
+# plt.title('Right Leg Gait')
+# plt.xlabel('t (s)')
+# plt.ylabel('Knee Joint Angle (deg)')
+# plt.legend(loc='upper right')
+# plt.legend(['target', 'tracked'])
+# plt.tight_layout()
+# plt.savefig("dataTS5_dmp.png")
+# plt.show()
+
+# import matplotlib.pyplot as plt
+# plt.figure(1)
+# plt.subplot(121)
+# plt.plot(y_target_left)
+# plt.plot(y_tracked_left, '--')
+# plt.xlabel('t (s)')
+# plt.ylabel('Knee Joint Angle (deg)')
+# plt.legend(loc='upper right')
+# plt.legend(['target', 'tracked'])
+# plt.title('Left Leg Gait')
+# plt.subplot(122)
+# plt.plot(y_target_right)
+# plt.plot(y_tracked_right, '--')
+# plt.title('Right Leg Gait')
+# plt.xlabel('t (s)')
+# plt.ylabel('Knee Joint Angle (deg)')
+# plt.legend(loc='upper right')
+# plt.legend(['target', 'tracked'])
+# plt.tight_layout()
+# plt.savefig("shit_data.png")
+# plt.show()
 

@@ -67,8 +67,7 @@ def knee(file_name1, file_name2, Q, L, c):
             path = np.zeros(timesteps)
             # returns evenly spaced numbers over a specific interval
             x = np.linspace(0, 1, len(col))
-            #
-             (x)
+            #print (x)
             #print ("the length of trajectory is ", len(x))
             #scipy.interpolate.interp1d is used to interpolate a 1D fucntion
             # number of trajectory points
@@ -222,9 +221,8 @@ def knee(file_name1, file_name2, Q, L, c):
     time_interpolated = path
     #pdb.set_trace()
 
-    # Iterate through each gait cycle
-    #for i in range(len(col_index)-1):   
-    for i in range(6):
+    # Iterate through each gait cycle   
+    for i in range(len(col_index)-1):
         current_gait_left =  np.array(col_left[col_index[i]:col_index[i+1]])
         current_gait_right =  np.array(col_right[col_index[i]:col_index[i+1]])
         first_gait_right  = np.array(col_right[col_index[0]:col_index[1]])
@@ -325,11 +323,6 @@ def knee(file_name1, file_name2, Q, L, c):
         #     # print(np.sum(external_force-path))
         #     external_force_last = path
 
-
-
-
-
-
         if i == 0:
             external_force = np.zeros((timesteps))
             f_target = control_shell.dmps.get_target(y_des, ext_force= None)
@@ -342,27 +335,30 @@ def knee(file_name1, file_name2, Q, L, c):
             control_shell2.dmps.batch_regression(f_target = f_target2,r = 1)
 
 
-        # if i > 0:
-        #     external_force = np.zeros((timesteps))
-        #     f_target = control_shell.dmps.get_target(y_des_last, ext_force= None)
-        #     control_shell.dmps.weight_update(f_target,r =1)
-        #     #control_shell.dmps.batch_regression(f_target = f_target,r = 1)
 
-        #     external_force = np.zeros((timesteps))
-        #     f_target2 = control_shell2.dmps.get_target(y_des_last2, ext_force= None)
-        #     control_shell.dmps.weight_update(f_target2,r =1)
-        #     #control_shell2.dmps.batch_regression(f_target = f_target2,r = 1)
+        if i > 0:
+            #external_force = np.zeros((timesteps))
+            f_target = control_shell.dmps.get_target(y_des_last, ext_force= external_force)
+            control_shell.dmps.weight_update(f_target,r =1)
+            #control_shell.dmps.batch_regression(f_target = f_target,r = 1)
+
+            #external_force = np.zeros((timesteps))
+            f_target2 = control_shell2.dmps.get_target(y_des_last2, ext_force= -external_force)
+            control_shell.dmps.weight_update(f_target2,r =1)
+            #control_shell2.dmps.batch_regression(f_target = f_target2,r = 1)
 
 
        
-        if i  > 0:
-            f_target = control_shell.dmps.get_target(y_des = y_des_last, ext_force = -external_force)
+        if i  < 0:
+            f_target = control_shell.dmps.get_target(y_des = y_des_last, ext_force = None)
             #f_target = control_shell.dmps.get_target(y_des = first, ext_force = external_force)
-            control_shell.dmps.weight_update(f_target = f_target,r = 1)
+            #control_shell.dmps.weight_update(f_target = f_target,r = 1)
+            control_shell.dmps.batch_regression(f_target = f_target,r = 1)
 
-            f_target2 = control_shell2.dmps.get_target(y_des = y_des_last2, ext_force = external_force)
-            #f_target = control_shell.dmps.get_target(y_des = first, ext_force = external_force)
-            control_shell2.dmps.weight_update(f_target = f_target2,r = 1)
+            #f_target2 = control_shell2.dmps.get_target(y_des = y_des_last2, ext_force = -external_force)
+            f_target2 = control_shell.dmps.get_target(y_des = y_des_last2, ext_force = None)
+            #control_shell2.dmps.weight_update(f_target = f_target2,r = 1)
+            control_shell2.dmps.batch_regression(f_target = f_target2,r = 1)
 
             
 
@@ -373,6 +369,7 @@ def knee(file_name1, file_name2, Q, L, c):
         y_track2 = np.zeros((timesteps))
         dy_track2 = np.zeros((timesteps))
         ddy_track2 = np.zeros((timesteps))
+
 
 
         if i == 0:
@@ -388,9 +385,9 @@ def knee(file_name1, file_name2, Q, L, c):
                 ext= external_force[t]
                 #ext= external_force_last[t]
                 # run and record timestep
-                y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= None, c_a=1, c_v=1, t_s=t)
+                y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= ext, c_a=1, c_v=1, t_s=t)
                 #y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= None, c_a=1, c_v=1, t_s = t)
-                y_track2[t], dy_track2[t], ddy_track2[t] = control_shell2.dmps.step(external_force= None, c_a=1, c_v=1, t_s=t)
+                y_track2[t], dy_track2[t], ddy_track2[t] = control_shell2.dmps.step(external_force= -ext, c_a=1, c_v=1, t_s=t)
 
         # else:
         #     for t in range(timesteps):

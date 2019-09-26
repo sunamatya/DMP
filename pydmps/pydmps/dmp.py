@@ -312,7 +312,7 @@ class DMPs(object):
         #print(timesteps)
         #print(interaction_force)
         #print(self.Memory_ILC_e[0,timesteps])
-
+        #print(interaction_force)
         edot_i = (e_i-self.Memory_ILC_e[0][timesteps])/self.dt
 
                 #self.e_i = 0
@@ -343,6 +343,9 @@ class DMPs(object):
         f_target = np.zeros((y_des.shape[1], self.n_dmps))
         # find the force required to move along this trajectory
         if ext_force is not None:
+            ilc_placeholder = np.zeros((self.timesteps))
+            for i in range(ext_force.shape[0]):
+                ext_force[i] = self.ILC(ext_force[i],i)
             for d in range(self.n_dmps):
                 f_target[:, d] = (ddy_des[d] - self.ay[d] *
                                   (self.by[d] * (self.goal[d] - y_des[d]) -
@@ -353,7 +356,7 @@ class DMPs(object):
                                   (self.by[d] * (self.goal[d] - y_des[d]) -
                                   dy_des[d]))
 
-        return f_target          
+        return f_target         
 
     def batch_regression(self, f_target, r):
         x_track = self.cs.rollout() # equation 2.5
@@ -381,7 +384,7 @@ class DMPs(object):
         P = self.P
 
         for i in range (self.n_bfs):
-            for j in range(self.timesteps-1):
+            for j in range(self.timesteps):
                 error[j,i] = f_target[j,0] - self.w_p[j,i]*r
                 #pdb.set_trace()
                 #print(error[:,i])
@@ -395,8 +398,10 @@ class DMPs(object):
                 #print(self.w[0].shape)
                 # print(np.size(self.w[0],0))
                 #print(P[i])
-               
-                self.w_p[j+1,i] = self.w_p[j,i]+ (psi[j,i]*P[i]*r*error[j,i]) #628*1 628*1 628*1 628*1
+                if j == self.timesteps-1:
+                    self.w_p[0,i] = self.w_p[j,i]+ (psi[j,i]*P[i]*r*error[j,i])
+                else:
+                    self.w_p[j+1,i] = self.w_p[j,i]+ (psi[j,i]*P[i]*r*error[j,i]) #628*1 628*1 628*1 628*1
                 #print("changed_weight")
                 #print(self.w_p[j+1,i])
         #print (w)
@@ -458,7 +463,7 @@ class DMPs(object):
                            self.dy[d]) + f) /tau
             if external_force is not None:
                 C_i = self.ILC(external_force, t_s)
-                self.ddy[d] += c_a* external_force/ self.dt
+                #self.ddy[d] += c_a* external_force/ self.dt
                 #print(C_i)
                 self.ddy[d] += c_a* C_i/ self.dt
             self.dy[d] += self.ddy[d] * tau * self.dt * error_coupling
