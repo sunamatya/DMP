@@ -366,7 +366,7 @@ class DMPs(object):
 
         # for t in range(self.timesteps):
         #     for b in range(self.n_bfs):
-                # self.w_p[t,b] = (psi[t,b]*f_target[t,0])/(np.sum(psi[:,b])+1e-10)
+        #         self.w_p[t,b] = (psi[t,b]*f_target[t,0])/(np.sum(psi[:,b])+1e-10)
 
     def weight_update(self, f_target, r):
         #self.P = np.ones((self.n_bfs))

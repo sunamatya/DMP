@@ -27,7 +27,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.interpolate
 
-def knee(file_name1, file_name2, Q, L, c):
+def knee_backup(file_name1, file_name2, Q, L, c):
     """
     This task sets up the arm to move like a leg walking.
 
@@ -81,6 +81,7 @@ def knee(file_name1, file_name2, Q, L, c):
             row = [int(val) for val in row]
             col_index.append(row[0])
 
+    col_index = col_index[0:6]
     #selection of first gait
     first_gait_left  = col_left[col_index[0]:col_index[1]]
     first_gait_right  = col_right[col_index[0]:col_index[1]]
@@ -142,7 +143,7 @@ def knee(file_name1, file_name2, Q, L, c):
     #num_goals = 
     # respecify goals for spatial scaling by changing add_to_goals
     #n_bfs = [10, 30, 50, 100, 1000]
-    n_bfs = [100]
+    n_bfs = [25]
     for ii, bfs in enumerate(n_bfs):
         control_pars = {'add_to_goals':[1e-4]*num_goals,
                         'bfs':bfs, # how many basis function per DMP
@@ -205,6 +206,10 @@ def knee(file_name1, file_name2, Q, L, c):
     y_target_right = np.zeros((0))
     y_tracked_left = np.zeros((0))
     y_tracked_right = np.zeros((0))
+    y_target_sum_left = np.zeros((timesteps))
+    y_target_sum_right = np.zeros((timesteps))
+    y_tracked_sum_left = np.zeros((timesteps))
+    y_tracked_sum_right = np.zeros((timesteps))
 
     #interpolate time 
     path = np.zeros((timesteps*(len(col_index)-1)))
@@ -223,6 +228,7 @@ def knee(file_name1, file_name2, Q, L, c):
 
     # Iterate through each gait cycle
     for i in range(len(col_index)-1):
+    #for i in range(5):
         current_gait_left =  np.array(col_left[col_index[i]:col_index[i+1]])
         current_gait_right =  np.array(col_right[col_index[i]:col_index[i+1]])
         first_gait_right  = np.array(col_right[col_index[0]:col_index[1]])
@@ -374,9 +380,9 @@ def knee(file_name1, file_name2, Q, L, c):
                 ext= external_force[t]
                 #ext= external_force_last[t]
                 # run and record timestep
-                y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= ext, c_a=1, c_v=1, t_s=t)
+                y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= None, c_a=1, c_v=1, t_s=t)
                 #y_track[t], dy_track[t], ddy_track[t] = control_shell.dmps.step(external_force= None, c_a=1, c_v=1, t_s = t)
-                y_track2[t], dy_track2[t], ddy_track2[t] = control_shell2.dmps.step(external_force= -ext, c_a=1, c_v=1, t_s=t)
+                y_track2[t], dy_track2[t], ddy_track2[t] = control_shell2.dmps.step(external_force= None, c_a=1, c_v=1, t_s=t)
 
         # else:
         #     for t in range(timesteps):
@@ -398,6 +404,11 @@ def knee(file_name1, file_name2, Q, L, c):
         y_target_right = np.concatenate((y_target_right, y_des[0]))
         y_tracked_left = np.concatenate((y_tracked_left, y_track2))
         y_tracked_right = np.concatenate((y_tracked_right, y_track))
+
+        y_target_sum_left =  y_target_sum_left + y_des2[0]
+        y_target_sum_right = y_target_sum_right + y_des[0]
+        y_tracked_sum_left = y_tracked_sum_left + y_track2
+        y_tracked_sum_right = y_tracked_sum_right + y_track
 
 
         if (plot == True):
@@ -432,4 +443,29 @@ def knee(file_name1, file_name2, Q, L, c):
     if (plot== True):
         plt.show()
 
-    return y_target_left, y_target_right, y_tracked_left,y_tracked_right, time_interpolated
+    avg_left_target = y_target_sum_left/5
+    avg_right_target = y_target_sum_right/5
+
+    avg_left_tracked = y_tracked_sum_left/5
+    avg_right_tracked = y_tracked_sum_left/5
+
+    squared_l = np.square(avg_left_target - avg_left_tracked)
+    rm_mean_l = np.sum(squared_l)/squared_l.shape[0]
+    root_mean_l = np.sqrt(rm_mean_l)
+
+    squared_r = np.square(avg_right_target - avg_right_tracked)
+    rm_mean_r = np.sum(squared_r)/squared_r.shape[0]
+    root_mean_r = np.sqrt(rm_mean_r)
+
+    max_error_l = np.max(np.abs(avg_left_target - avg_left_tracked))
+    max_error_r = np.max(np.abs(avg_right_target - avg_right_tracked))
+
+
+    print("C: {:.3f}, Q: {:.3f}, RMSE L :{}".format(c, Q, root_mean_l))
+    print("C: {:.3f}, Q: {:.3f}, RMSE R :{}".format(c, Q, root_mean_r))
+
+    print("C: {:.3f}, Q: {:.3f}, MAX_ERROR L :{}".format(c, Q, max_error_l))
+    print("C: {:.3f}, Q: {:.3f}, MAX_ERROR R :{}".format(c, Q, max_error_r))
+
+    return y_target_left, y_target_right, y_tracked_left,y_tracked_right, time_interpolated, avg_left_target, avg_right_target, avg_left_tracked, avg_right_tracked
+
